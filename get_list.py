@@ -6,8 +6,6 @@ from bilibili_api import Credential
 from bilibili_api.user import get_toview_list
 from dotenv import load_dotenv
 
-from example import BILI_JCT
-
 load_dotenv()
 
 SESSDATA = os.getenv('BILI_SESSDATA', "")
