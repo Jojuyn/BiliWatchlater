@@ -1,7 +1,12 @@
 .env
+.env
 *.csv
+*.db
+*.db-*
 
 __pycache__/
 *.pyc
+output.txt
 
 .idea/
+.vscode/
