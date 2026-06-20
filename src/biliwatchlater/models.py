@@ -2,6 +2,8 @@ from dataclasses import asdict, dataclass
 from datetime import datetime
 from typing import Any
 
+import pandas as pd
+
 
 BASE_COLUMNS = [
     "bvid",
@@ -58,6 +60,16 @@ class WatchLaterVideo:
         return asdict(self)
 
 
+@dataclass(frozen=True)
+class SyncResult:
+    """Result of one sync_dataframes run."""
+    dataframe: pd.DataFrame
+    total: int
+    added: int
+    removed: int
+    updated: int
+
+
 def format_timestamp(value: Any) -> str:
     if not value:
         return ""
@@ -96,4 +108,3 @@ def video_from_api_item(item: dict[str, Any]) -> WatchLaterVideo:
         danmaku_count=stat.get("danmaku"),
         progress_seconds=item.get("progress"),
     )
-
