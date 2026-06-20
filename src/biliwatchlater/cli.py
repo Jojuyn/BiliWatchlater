@@ -1,9 +1,17 @@
 import argparse
 import asyncio
+import time
 from pathlib import Path
 
 from .config import load_settings
-from .storage import migrate_csv_to_sqlite, read_csv, read_sqlite, write_sqlite
+from .storage import (
+    ensure_schema,
+    migrate_csv_to_sqlite,
+    read_csv,
+    read_sqlite,
+    record_sync_history,
+    write_sqlite,
+)
 from .sync import sync_dataframes
 
 
@@ -13,12 +21,15 @@ async def sync_watch_later(
 ) -> None:
     from .client import BilibiliWatchLaterClient
 
+    started_at = time.strftime("%Y-%m-%d %H:%M:%S")
     settings = load_settings(db_path=db_path)
+    ensure_schema(settings.db_path)
     client = BilibiliWatchLaterClient(settings)
     videos = await client.fetch_watch_later()
     old = read_existing_dataset(settings.db_path, import_csv_path)
     result = sync_dataframes(old, videos)
     write_sqlite(settings.db_path, result.dataframe)
+    record_sync_history(settings.db_path, started_at, len(videos), result)
 
     print(
         "同步完成："
@@ -43,6 +54,7 @@ def read_existing_dataset(db_path: Path, import_csv_path: str | Path | None) -> 
 
 
 def migrate_csv(csv_path: str | Path = "watch_later.csv", db_path: str | Path = "watch_later.db") -> None:
+    ensure_schema(Path(db_path))
     count = migrate_csv_to_sqlite(Path(csv_path), Path(db_path))
     print(f"迁移完成：已从 {csv_path} 写入 {db_path}，共 {count} 条。")
 
