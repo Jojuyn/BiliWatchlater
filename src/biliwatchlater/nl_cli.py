@@ -35,7 +35,7 @@ Convert the user's Chinese natural language request into a JSON action object.
 
 Output ONLY valid JSON. Examples:
 {"action": "search", "params": {"query": "AI"}}
-{"action": "search", "params": {"category_v2": "计算机技术", "status": "unwatched"}}
+{"action": "search", "params": {"category_v2": "\\\\u8ba1\\\\u7b97\\\\u673a\\\\u6280\\\\u672f", "status": "unwatched"}}
 {"action": "stats", "params": {"type": "overview"}}
 {"action": "sync", "params": {}}
 {"action": "help", "params": {}}
@@ -115,9 +115,9 @@ _INTENT_JSON_EXTRACTOR = re.compile(r"\\{[^}]+\\}")
 async def _parse_with_llm(client: AIClient, user_input: str, ctx: SessionContext) -> ParsedIntent:
     messages = [{"role": "system", "content": SYSTEM_PROMPT}]
     if ctx.last_results:
-        ctx_str = "Current search results:\n"
+        ctx_str = "Current search results:\\n"
         for i, item in enumerate(ctx.last_results[:5], 1):
-            ctx_str += f"{i}. {item['title']} (bvid: {item['bvid']})\n"
+            ctx_str += f"{i}. {item['title']} (bvid: {item['bvid']})\\n"
         messages.append({"role": "system", "content": ctx_str})
     messages.append({"role": "user", "content": user_input})
 
@@ -237,85 +237,85 @@ def _format_response(executed: dict) -> str:
     if t == "search":
         r = executed["result"]
         if r.total == 0:
-            return "\U0001f50d \u6ca1\u6709\u627e\u5230\u5339\u914d\u7684\u89c6\u9891\u3002"
-        lines = [f"\U0001f50d \u627e\u5230 {r.total} \u6761\u89c6\u9891\uff1a"]
+            return "\\U0001f50d \u6ca1\u6709\u627e\u5230\u5339\u914d\u7684\u89c6\u9891\u3002"
+        lines = [f"\\U0001f50d \u627e\u5230 {r.total} \u6761\u89c6\u9891\uff1a"]
         for i, item in enumerate(r.items[:10], 1):
             tag_str = " ".join(
                 t["name"] for t in item.get("tags", [])[:3]
             )
             tag_part = f" [{tag_str}]" if tag_str else ""
             dur = item.get("duration_display", "")
-            status_icons = {"unwatched": "\U0001f195", "watching": "\\u25b6\ufe0f", "watched": "\\u2705"}
+            status_icons = {"unwatched": "\\U0001f195", "watching": "\\u25b6\\ufe0f", "watched": "\\u2705"}
             icon = status_icons.get(item.get("status", ""), "")
             lines.append(
                 f"  {i}. {item['title']} | {item['up_name']} | {dur}{tag_part} {icon}"
             )
         if r.total > 10:
             lines.append(f"  ... \u8fd8\u6709 {r.total - 10} \u6761")
-        return "\n".join(lines)
+        return "\\n".join(lines)
 
     if t == "stats_overview":
         r = executed["result"]
         return (
-            f"\U0001f4ca \u5f53\u524d\u7edf\u8ba1\uff1a\n"
-            f"  \u603b\u8ba1 {r['total']} \u6761\n"
-            f"  \U0001f195 \u672a\u770b\uff1a{r['unwatched']}\n"
-            f"  \\u25b6\ufe0f \u89c2\u770b\u4e2d\uff1a{r['watching']}\n"
-            f"  \\u2705 \u5df2\u770b\u5b8c\uff1a{r['watched']}\n"
-            f"  \U0001f3a5 \u603b\u65f6\u957f\uff1a{r['total_duration_hours']}\u5c0f\u65f6"
+            f"\\U0001f4ca \u5f53\u524d\u7edf\u8ba1\uff1a\\n"
+            f"  \u603b\u8ba1 {r['total']} \u6761\\n"
+            f"  \\U0001f195 \u672a\u770b\uff1a{r['unwatched']}\\n"
+            f"  \\u25b6\\ufe0f \u89c2\u770b\u4e2d\uff1a{r['watching']}\\n"
+            f"  \\u2705 \u5df2\u770b\u5b8c\uff1a{r['watched']}\\n"
+            f"  \\U0001f3a5 \u603b\u65f6\u957f\uff1a{r['total_duration_hours']}\u5c0f\u65f6"
         )
 
     if t == "stats_duration":
         bins = executed["result"]
-        lines = ["\U0001f4ca \u65f6\u957f\u5206\u5e03\uff1a"]
+        lines = ["\\U0001f4ca \u65f6\u957f\u5206\u5e03\uff1a"]
         for b in bins:
             lines.append(f"  {b['label']}: {b['count']}")
-        return "\n".join(lines)
+        return "\\n".join(lines)
 
     if t == "stats_hot":
         items = executed["result"]
         if not items:
-            return "\U0001f525 \u6ca1\u6709\u627e\u5230\u70ed\u95e8\u672a\u770b\u89c6\u9891\u3002"
-        lines = ["\U0001f525 \u672a\u770b\u4e2d\u6700\u70ed\u95e8\u7684\uff1a"]
+            return "\\U0001f525 \u6ca1\u6709\u627e\u5230\u70ed\u95e8\u672a\u770b\u89c6\u9891\u3002"
+        lines = ["\\U0001f525 \u672a\u770b\u4e2d\u6700\u70ed\u95e8\u7684\uff1a"]
         for i, item in enumerate(items[:5], 1):
             lines.append(f"  {i}. {item['title']} ({item['view_count']}\u64ad\u653e) - {item['up_name']}")
-        return "\n".join(lines)
+        return "\\n".join(lines)
 
     if t == "stats_uploaders":
         ups = executed["result"]
-        lines = ["\U0001f465 UP\u4e3b\u6392\u884c\uff1a"]
+        lines = ["\\U0001f465 UP\u4e3b\u6392\u884c\uff1a"]
         for i, u in enumerate(ups[:5], 1):
             lines.append(f"  {i}. {u['name']} - {u['count']}\u6761")
-        return "\n".join(lines)
+        return "\\n".join(lines)
 
     if t == "tags":
         tags = executed["result"]
         if not tags:
-            return "\U0001f3f7\ufe0f \u8fd8\u6ca1\u6709\u6807\u7b7e\uff0c\u7528 `label <bvid> <\u6807\u7b7e\u540d>` \u6dfb\u52a0\u3002"
-        lines = ["\U0001f3f7\ufe0f \u6240\u6709\u6807\u7b7e\uff1a"]
+            return "\\U0001f3f7\\ufe0f \u8fd8\u6ca1\u6709\u6807\u7b7e\uff0c\u7528 `label <bvid> <\u6807\u7b7e\u540d>` \u6dfb\u52a0\u3002"
+        lines = ["\\U0001f3f7\\ufe0f \u6240\u6709\u6807\u7b7e\uff1a"]
         for t in tags:
             lines.append(f"  {t['name']} ({t['count']}\u6b21)")
-        return "\n".join(lines)
+        return "\\n".join(lines)
 
     if t == "tag_done":
         act = "\u6dfb\u52a0" if executed["action"] == "add" else "\u79fb\u9664"
-        return f"\U0001f4cb \u5df2{act}\u6807\u7b7e\u300c{executed['name']}\\u300d"
+        return f"\\U0001f4cb \u5df2{act}\u6807\u7b7e\u300c{executed['name']}\\u300d"
 
     if t == "note_done":
-        return f"\U0001f4dd \u7b14\u8bb0\u5df2\u4fdd\u5b58"
+        return f"\\U0001f4dd \u7b14\u8bb0\u5df2\u4fdd\u5b58"
 
     if t == "priority_done":
-        labels = {0: "\u65e0", 1: "P1 \U0001f534", 2: "P2 \U0001f7e1", 3: "P3 \U0001f535"}
-        return f"\U0001f4cc \u4f18\u5148\u7ea7\u5df2\u8bbe\u4e3a {labels.get(executed['level'], str(executed['level']))}"
+        labels = {0: "\u65e0", 1: "P1 \\U0001f534", 2: "P2 \\U0001f7e1", 3: "P3 \\U0001f535"}
+        return f"\\U0001f4cc \u4f18\u5148\u7ea7\u5df2\u8bbe\u4e3a {labels.get(executed['level'], str(executed['level']))}"
 
     if t == "archive_done":
-        return f"\U0001f5c4\ufe0f \u89c6\u9891\u5df2\u5f52\u6863"
+        return f"\\U0001f5c4\\ufe0f \u89c6\u9891\u5df2\u5f52\u6863"
 
     if t == "watched_done":
         return f"\\u2705 \u89c6\u9891\u5df2\u6807\u8bb0\u4e3a\u5df2\u770b"
 
     if t == "sync_request":
-        return "\U0001f504 \u8bf7\u8fd0\u884c `python -m src.biliwatchlater sync` \u540c\u6b65"
+        return "\\U0001f504 \u8bf7\u8fd0\u884c `python -m src.biliwatchlater sync` \u540c\u6b65"
 
     return FALLBACK_HELP
 
@@ -333,15 +333,18 @@ async def chat_loop(
 
     if not once:
         if ai_client:
-            print(f"\U0001f3ac \u7a0d\u540e\u518d\u770b\u52a9\u624b\u5df2\u5c31\u7eea"
+            print(f"\\U0001f3ac \u7a0d\u540e\u518d\u770b\u52a9\u624b\u5df2\u5c31\u7eea"
                   f" (\u5f53\u524d\u63a5\u5165: {ai_client._settings.provider})")
         else:
-            print("\U0001f3ac \u7a0d\u540e\u518d\u770b\u52a9\u624b\u5df2\u5c31\u7eea"
+            print("\\U0001f3ac \u7a0d\u540e\u518d\u770b\u52a9\u624b\u5df2\u5c31\u7eea"
                   " (\u5173\u952e\u8bcd\u6a21\u5f0f)")
-        print("\u8f93\u5165 `exit` \u9000\u51fa\n")
+        print("\u8f93\u5165 `exit` \u9000\u51fa\\n")
 
     if once and initial_input:
-        intent = await _parse_with_llm(ai_client, initial_input, ctx) if ai_client else _parse_fallback(initial_input)
+        if ai_client:
+            intent = await _parse_with_llm(ai_client, initial_input, ctx)
+        else:
+            intent = _parse_fallback(initial_input)
         executed = await _execute(intent, db_path, ctx)
         print(_format_response(executed))
         return

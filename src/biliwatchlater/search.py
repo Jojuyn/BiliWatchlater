@@ -130,7 +130,7 @@ def _build_query(filters: SearchFilter) -> tuple[str, list, str, list]:
     fts_where = ""
     if filters.query.strip():
         fts_join = "JOIN watch_later_fts fts ON w.bvid = fts.bvid"
-        fts_where = "fts.title MATCH ? AND "
+        fts_where = "watch_later_fts MATCH ? AND "
         where_params.insert(0, filters.query)
 
     full_where = fts_where + where_clause
