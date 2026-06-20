@@ -78,11 +78,12 @@ class TestDurationBreakdown:
         db = _seed_db(tmp_path)
         bins = get_duration_breakdown(db)
         assert len(bins) == 5
-    by_label = {b["label"]: b["count"] for b in bins}
-    assert by_label["<5min"] == 1   # VIDEO_A: 300s → < 300? No, 300=5min. <5min is <300.
-    assert by_label["5-10min"] == 2  # VIDEO_A(300s) + VIDEO_B(600s) in [300, 600)
-        assert by_label["10-20min"] == 0  # 1200-1800
-        assert by_label[">40min"] == 0    # none > 2400
+        by_label = {b["label"]: b["count"] for b in bins}
+        assert by_label["<5min"] == 0  # none <300s; A at 300s = 5min
+        assert by_label["5-10min"] == 1  # VIDEO_A(300s) in [300,600)
+        assert by_label["10-20min"] == 1  # VIDEO_B(600s) in [600,1200)
+        assert by_label["20-40min"] == 1  # VIDEO_C(1800s) in [1200,2400)
+        assert by_label[">40min"] == 0
 
 
 class TestTopUploaders:

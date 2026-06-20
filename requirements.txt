@@ -1,3 +1,5 @@
 bilibili-api-python
 pandas
 python-dotenv
+openai
+rich
