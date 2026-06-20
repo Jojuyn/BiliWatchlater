@@ -6,13 +6,19 @@ from pathlib import Path
 import pandas as pd
 import pytest
 
-from src.biliwatchlater.models import BASE_COLUMNS, WatchLaterVideo
+from src.biliwatchlater.models import BASE_COLUMNS, SyncResult, WatchLaterVideo
 from src.biliwatchlater.storage import (
+    TAGS_TABLE,
+    VIDEO_TAGS_TABLE,
+    VIDEO_ANNOTATIONS_TABLE,
+    SYNC_HISTORY_TABLE,
     WATCH_LATER_TABLE,
     FTS_TABLE,
+    ensure_schema,
     migrate_csv_to_sqlite,
     read_csv,
     read_sqlite,
+    record_sync_history,
     videos_to_dataframe,
     write_sqlite,
 )
@@ -183,3 +189,96 @@ class TestReadCsv:
         df = read_csv(csv)
         assert len(df) == 1
         assert df.iloc[0]["bvid"] == "BV1TestAA"
+
+
+class TestEnsureSchema:
+    """Test database schema creation and idempotency."""
+
+    NEW_TABLES = {TAGS_TABLE, VIDEO_TAGS_TABLE, VIDEO_ANNOTATIONS_TABLE, SYNC_HISTORY_TABLE}
+
+    def _table_names(self, db):
+        with sqlite3.connect(db) as conn:
+            return {
+                r[0] for r in conn.execute(
+                    "SELECT name FROM sqlite_master WHERE type='table'"
+                ).fetchall()
+            }
+
+    def _index_names(self, db):
+        with sqlite3.connect(db) as conn:
+            return {
+                r[0] for r in conn.execute(
+                    "SELECT name FROM sqlite_master WHERE type='index'"
+                ).fetchall()
+            }
+
+    def test_creates_new_tables(self, tmp_path):
+        db = tmp_path / "fresh.db"
+        ensure_schema(db)
+        tables = self._table_names(db)
+        for t in self.NEW_TABLES:
+            assert t in tables, f"Missing table: {t}"
+
+    def test_idempotent(self, tmp_path):
+        db = tmp_path / "idem.db"
+        ensure_schema(db)
+        tables_before = self._table_names(db)
+        ensure_schema(db)
+        tables_after = self._table_names(db)
+        assert tables_before == tables_after
+
+    def test_preserves_existing_watch_later(self, tmp_path):
+        db = tmp_path / "existing.db"
+        write_sqlite(db, videos_to_dataframe([VIDEO_A]))
+        ensure_schema(db)
+        tables = self._table_names(db)
+        assert WATCH_LATER_TABLE in tables
+        df = read_sqlite(db)
+        assert len(df) == 1
+        assert df.iloc[0]["bvid"] == "BV1TestAA"
+
+    def test_creates_video_tags_index(self, tmp_path):
+        db = tmp_path / "indexed.db"
+        ensure_schema(db)
+        indexes = self._index_names(db)
+        assert "idx_video_tags_tag_id" in indexes
+
+
+class TestRecordSyncHistory:
+    """Test sync history recording."""
+
+    def test_writes_one_record(self, tmp_path):
+        db = tmp_path / "hist.db"
+        ensure_schema(db)
+        result = SyncResult(dataframe=pd.DataFrame(), total=5, added=2, removed=1, updated=3)
+        record_sync_history(db, "2026-06-20 10:00:00", 10, result)
+        with sqlite3.connect(db) as conn:
+            rows = conn.execute(f"SELECT * FROM {SYNC_HISTORY_TABLE}").fetchall()
+        assert len(rows) == 1
+        row = rows[0]
+        assert row[3] == 10   # total_online
+        assert row[4] == 5    # total_local
+        assert row[5] == 2    # added
+        assert row[6] == 1    # removed
+        assert row[7] == 3    # updated_fields
+
+    def test_accumulates_multiple_records(self, tmp_path):
+        db = tmp_path / "multi.db"
+        ensure_schema(db)
+        r1 = SyncResult(dataframe=pd.DataFrame(), total=5, added=2, removed=1, updated=3)
+        r2 = SyncResult(dataframe=pd.DataFrame(), total=3, added=0, removed=2, updated=0)
+        record_sync_history(db, "2026-06-20 10:00:00", 10, r1)
+        record_sync_history(db, "2026-06-20 11:00:00", 8, r2)
+        with sqlite3.connect(db) as conn:
+            cnt = conn.execute(f"SELECT COUNT(*) FROM {SYNC_HISTORY_TABLE}").fetchone()[0]
+        assert cnt == 2
+
+    def test_auto_timestamps(self, tmp_path):
+        db = tmp_path / "ts.db"
+        ensure_schema(db)
+        result = SyncResult(dataframe=pd.DataFrame(), total=0, added=0, removed=0, updated=0)
+        record_sync_history(db, "2026-06-20 10:00:00", 0, result)
+        with sqlite3.connect(db) as conn:
+            row = conn.execute(f"SELECT * FROM {SYNC_HISTORY_TABLE}").fetchone()
+        assert row[1] == "2026-06-20 10:00:00"   # started_at
+        assert row[2] is not None and len(str(row[2])) > 0  # finished_at auto-populated

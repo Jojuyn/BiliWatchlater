@@ -1,18 +1,7 @@
-from dataclasses import dataclass
-
 import pandas as pd
 
-from .models import BASE_COLUMNS, WatchLaterVideo
+from .models import BASE_COLUMNS, SyncResult, WatchLaterVideo
 from .storage import videos_to_dataframe
-
-
-@dataclass(frozen=True)
-class SyncResult:
-    dataframe: pd.DataFrame
-    total: int
-    added: int
-    removed: int
-    updated: int
 
 
 def sync_dataframes(old: pd.DataFrame, videos: list[WatchLaterVideo]) -> SyncResult:
@@ -76,4 +65,3 @@ def sync_dataframes(old: pd.DataFrame, videos: list[WatchLaterVideo]) -> SyncRes
         removed=len(old_bvids - online_bvids),
         updated=updated,
     )
-
